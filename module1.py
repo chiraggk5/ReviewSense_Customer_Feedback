@@ -1,6 +1,6 @@
 import pandas as pd
-import re 
-import string
+import re
+import string 
 
 STOPWORDS = {
     "is","the","and","a","an","to","of","in","on","for","with","this","that","it","was","are","as","at","be","by","from","or","but"
@@ -11,7 +11,7 @@ def clean_text(text):
     text = re.sub(r"http\S+","",text) 
     text = re.sub(r"\d+","",text) 
     text = text.translate(str.maketrans("","",string.punctuation)) 
-    text = re.sub(r"\s+","",text).strip() 
+    text = re.sub(r"\s+"," ",text).strip() 
     words = [W for W in text.split() if W not in STOPWORDS] 
     return " ".join(words)
 
@@ -25,7 +25,7 @@ def main():
     except FileNotFoundError:
         print("Excel file not found. Attempting to read from existing CSV.")
         try:
-            df = pd.readcsv(file_path_csv)
+            df = pd.read_csv(file_path_csv)
             if "clean_feedback" in df.columns:
                 print("CSV already has cleaned feedback. Skipping cleaning.")
                 return
