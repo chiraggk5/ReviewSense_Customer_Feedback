@@ -1,0 +1,16 @@
+# Python caches and local environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Local tooling and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Generated visual output
+sentiment-bar-chart.png
+sentiment_bar_chart.png
