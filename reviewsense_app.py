@@ -2,10 +2,8 @@
 #  ReviewSense — CLEAN IMPERIAL (TRUE ONYX)
 # ============================================================
 
-import time
 import re
 import string
-import os
 from collections import Counter
 
 import pandas as pd
@@ -15,7 +13,6 @@ import seaborn as sns
 from wordcloud import WordCloud
 from textblob import TextBlob
 from datetime import datetime
-import numpy as np
 
 # ── Page config ─────────────────────────────────────────────────────
 st.set_page_config(
@@ -93,7 +90,7 @@ def clean_text(t):
 def get_sentiment_hybrid(t):
     ts = str(t).lower(); pol = 0
     try: pol = TextBlob(ts).sentiment.polarity
-    except: pol = 0
+    except Exception: pol = 0
     pos_k = ["good","great","amazing","excellent","happy","love","best","nice","fantastic","satisfied"]
     neg_k = ["bad","terrible","worst","awful","sad","poor","late","broken","useless","hate"]
     if pol == 0:
@@ -273,7 +270,15 @@ def page_dashboard():
     fig1, ax1 = plt.subplots(figsize=(10, 4.2))
     plt.style.use('dark_background'); fig1.patch.set_facecolor('#000000'); ax1.set_facecolor('#000000')
     counts = f_df["sentiment"].value_counts()
-    ax1.bar([s_map[s] for s in ["positive","negative","neutral"]], [counts.get(s, 0) for s in ["positive","negative","neutral"]], color=["#d4af37", "#a1a1aa", "#444444"])
+    bars = ax1.bar(
+        [s_map[s] for s in ["positive", "negative", "neutral"]],
+        [counts.get(s, 0) for s in ["positive", "negative", "neutral"]],
+        color=["#d4af37", "#a1a1aa", "#444444"],
+    )
+    ax1.bar_label(bars, padding=4, color="white", fontsize=11)
+    ax1.set_ylabel("Number of Reviews")
+    ax1.set_ylim(0, max(counts.max() * 1.12, 1))
+    fig1.tight_layout()
     st.pyplot(fig1)
 
     st.markdown("### 📱 Competitive Intelligence")
@@ -298,17 +303,42 @@ def page_dashboard():
             fig_t, ax_t = plt.subplots(); fig_t.patch.set_facecolor('#000000'); ax_t.set_facecolor('#000000')
             cols_t = {"positive": "#d4af37", "negative": "#ffffff", "neutral": "#444444"}
             for sk in ["positive", "negative", "neutral"]: ax_t.plot(trend.index.astype(str), trend[sk], marker='o', label=s_map[sk], color=cols_t[sk], linewidth=2.5)
-            ax_t.legend(); st.pyplot(fig_t)
+            tick_count = min(8, len(trend.index))
+            if tick_count == 1:
+                tick_positions = [0]
+            else:
+                tick_positions = [round(i * (len(trend.index) - 1) / (tick_count - 1)) for i in range(tick_count)]
+            ax_t.set_xticks(tick_positions)
+            ax_t.set_xticklabels([trend.index[position] for position in tick_positions], rotation=45, ha="right")
+            ax_t.set_ylabel("Number of Reviews")
+            ax_t.legend()
+            fig_t.tight_layout()
+            st.pyplot(fig_t)
         else: st.info("Historical data required.")
     with t2:
         fig_r, ax_r = plt.subplots(); ax_r.set_facecolor('#000000'); ax_r.hist(f_df["confidence_score"], bins=20, color="#d4af37", edgecolor="#000000"); st.pyplot(fig_r)
 
     st.markdown("### 🔑 Semantic Themes")
     k1, k2 = st.columns(2)
-    with k1: fig_kw, ax_kw = plt.subplots(); sns.barplot(data=kdf.head(10), x="frequency", y="keyword", palette="YlOrBr", ax=ax_kw); st.pyplot(fig_kw)
+    filtered_words = f_df["clean_feedback"].dropna().astype(str).str.split().explode()
+    filtered_kdf = filtered_words.value_counts().rename_axis("keyword").reset_index(name="frequency")
+    with k1:
+        fig_kw, ax_kw = plt.subplots()
+        top_keywords = filtered_kdf.head(10).sort_values("frequency")
+        ax_kw.barh(top_keywords["keyword"], top_keywords["frequency"], color="#d4af37")
+        ax_kw.set_xlabel("Frequency")
+        fig_kw.tight_layout()
+        st.pyplot(fig_kw)
     with k2:
-        wc = WordCloud(width=600, height=400, background_color="#000000", colormap="YlOrBr").generate_from_frequencies(dict(zip(kdf["keyword"], kdf["frequency"])))
-        fig_wc, ax_wc = plt.subplots(); ax_wc.imshow(wc, interpolation="bilinear"); ax_wc.axis("off"); st.pyplot(fig_wc)
+        fig_wc, ax_wc = plt.subplots()
+        if filtered_kdf.empty:
+            ax_wc.text(0.5, 0.5, "No keywords for the selected filters", ha="center", va="center", color="white")
+            ax_wc.axis("off")
+        else:
+            wc = WordCloud(width=600, height=400, background_color="#000000", colormap="YlOrBr").generate_from_frequencies(dict(zip(filtered_kdf["keyword"], filtered_kdf["frequency"])))
+            ax_wc.imshow(wc, interpolation="bilinear")
+            ax_wc.axis("off")
+        st.pyplot(fig_wc)
 
     with st.expander("💼 Advanced Data Export"):
         st.dataframe(f_df.head(20), use_container_width=True)
